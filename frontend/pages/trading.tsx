@@ -8,12 +8,14 @@ import {
 } from '@heroicons/react/24/outline';
 import { portfolioApi, tradingApi, marketApi } from '../lib/services';
 import { TradeForm, Quote } from '../types';
+import TradingViewChart from '../components/TradingViewChart';
 
 export default function Trading() {
   const [searchSymbol, setSearchSymbol] = useState('');
   const [selectedSymbol, setSelectedSymbol] = useState('');
   const [currentQuote, setCurrentQuote] = useState<Quote | null>(null);
   const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [chartData, setChartData] = useState<any[]>([]);
   
   const queryClient = useQueryClient();
 
@@ -62,11 +64,18 @@ export default function Trading() {
     setSearchResults([]);
     
     try {
+      // Fetch quote data
       const quote = await marketApi.getQuote(symbol);
       setCurrentQuote(quote);
       setValue('price', quote.price);
+      
+      // Fetch chart data
+      const intradayData = await marketApi.getIntradayData(symbol, '5min');
+      if (intradayData && intradayData.data) {
+        setChartData(intradayData.data);
+      }
     } catch (error) {
-      console.error('Failed to get quote:', error);
+      console.error('Failed to get quote and chart data:', error);
     }
   };
 
@@ -110,7 +119,7 @@ export default function Trading() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className={`grid gap-8 ${selectedSymbol ? 'grid-cols-1 xl:grid-cols-3' : 'grid-cols-1 lg:grid-cols-2'}`}>
         {/* Trading Panel */}
         <div className="card">
           <h2 className="text-lg font-medium text-gray-900 mb-4">Place Order</h2>
@@ -290,8 +299,19 @@ export default function Trading() {
           )}
         </div>
 
+        {/* Chart Section */}
+        {selectedSymbol && chartData.length > 0 && (
+          <div className="card xl:col-span-2">
+            <TradingViewChart 
+              symbol={selectedSymbol}
+              data={chartData}
+              height={400}
+            />
+          </div>
+        )}
+
         {/* Recent Trades */}
-        <div className="card">
+        <div className={`card ${selectedSymbol && chartData.length > 0 ? 'xl:col-span-1' : ''}`}>
           <h2 className="text-lg font-medium text-gray-900 mb-4">Recent Trades</h2>
           
           {!trades || trades.length === 0 ? (
